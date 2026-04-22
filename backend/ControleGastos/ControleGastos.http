@@ -1,6 +1,302 @@
-@ControleGastos_HostAddress = http://localhost:5211
+@baseUrl = http://localhost:5211
 
-GET {{ControleGastos_HostAddress}}/weatherforecast/
-Accept: application/json
+### ==================== CATEGORIA ====================
 
-###
+### Listar categorias
+GET {{baseUrl}}/api/categoria
+
+### Criar categoria
+POST {{baseUrl}}/api/categoria
+Content-Type: application/json
+
+{
+  "nome": "Luz Sítio",
+  "descricao": "Luz do sítio",
+  "cor": "#5dca62",
+  "pessoa": "Caca",
+  "isFixa": true,
+  "ativa": true
+}
+
+### Editar categoria
+PUT {{baseUrl}}/api/categoria/1
+Content-Type: application/json
+
+{
+  "id": 1,
+  "nome": "Luz Sítio",
+  "descricao": "Luz do sítio",
+  "cor": "#5DCAA5",
+  "pessoa": "Caca",
+  "isFixa": true,
+  "ativa": true,
+  "criadaEm": "2026-04-22T00:00:00Z"
+}
+
+### Deletar categoria
+DELETE {{baseUrl}}/api/categoria/1
+
+### ==================== CARTAO ====================
+
+### Listar cartões
+GET {{baseUrl}}/api/cartao
+
+### Criar cartão
+POST {{baseUrl}}/api/cartao
+Content-Type: application/json
+
+{
+  "nome": "Nubank",
+  "bandeira": "Mastercard",
+  "diaFechamento": 3,
+  "pessoa": "Caca",
+  "ativo": true,
+  "cor": "#8A05BE"
+}
+
+### Editar cartão
+PUT {{baseUrl}}/api/cartao/1
+Content-Type: application/json
+
+{
+  "id": 1,
+  "nome": "Nubank",
+  "bandeira": "Mastercard",
+  "diaFechamento": 3,
+  "pessoa": "Caca",
+  "ativo": true,
+  "cor": "#8A05BE"
+}
+
+### Deletar cartão
+DELETE {{baseUrl}}/api/cartao/1
+
+### ==================== SALARIO ESTIMATIVA ====================
+
+### Listar salários/estimativas
+GET {{baseUrl}}/api/salarioestimativa
+
+### Buscar por pessoa e mês
+GET {{baseUrl}}/api/salarioestimativa/Caca/2026-04-01
+
+### Criar salário estimado
+POST {{baseUrl}}/api/salarioestimativa
+Content-Type: application/json
+
+{
+  "pessoa": "Caca",
+  "mesRef": "2026-04-01",
+  "valorEstimado": 5000.00,
+  "valorReal": null,
+  "confirmado": false,
+  "observacao": ""
+}
+
+### Editar salário estimado
+PUT {{baseUrl}}/api/salarioestimativa/1
+Content-Type: application/json
+
+{
+  "id": 1,
+  "pessoa": "Caca",
+  "mesRef": "2026-04-01",
+  "valorEstimado": 5000.00,
+  "valorReal": 5200.00,
+  "confirmado": true,
+  "observacao": "Recebido com bônus"
+}
+
+### ==================== TRANSACAO ====================
+
+### Listar transações
+GET {{baseUrl}}/api/transacao
+
+### Listar transações por pessoa e mês
+GET {{baseUrl}}/api/transacao/Caca/2026-04-01
+
+### Criar transação
+POST {{baseUrl}}/api/transacao
+Content-Type: application/json
+
+{
+  "data": "2026-04-10",
+  "mesRef": "2026-04-01",
+  "pessoa": "Caca",
+  "categoriaId": 1,
+  "valor": 150.00,
+  "tipo": "saida",
+  "descricao": "Supermercado",
+  "isEstimativa": false,
+  "confirmado": true,
+  "pago": true
+}
+
+### Editar transação
+PUT {{baseUrl}}/api/transacao/1
+Content-Type: application/json
+
+{
+  "id": 1,
+  "data": "2026-04-10",
+  "mesRef": "2026-04-01",
+  "pessoa": "Caca",
+  "categoriaId": 1,
+  "valor": 160.00,
+  "tipo": "saida",
+  "descricao": "Supermercado",
+  "isEstimativa": false,
+  "confirmado": true,
+  "pago": true
+}
+
+### Marcar pago/não pago
+PATCH {{baseUrl}}/api/transacao/1/pago
+
+### Deletar transação
+DELETE {{baseUrl}}/api/transacao/1
+
+### ==================== GASTO FIXO CARTAO ====================
+
+### Listar gastos fixos de cartão
+GET {{baseUrl}}/api/gastofixocartao
+
+### Listar por cartão
+GET {{baseUrl}}/api/gastofixocartao/cartao/1
+
+### Criar gasto fixo
+POST {{baseUrl}}/api/gastofixocartao
+Content-Type: application/json
+
+{
+  "cartaoId": 1,
+  "descricao": "Spotify",
+  "valor": 21.90,
+  "parcelasTotal": null,
+  "parcelasRestantes": null,
+  "ativo": true
+}
+
+### Editar gasto fixo
+PUT {{baseUrl}}/api/gastofixocartao/1
+Content-Type: application/json
+
+{
+  "id": 1,
+  "cartaoId": 1,
+  "descricao": "Spotify",
+  "valor": 24.90,
+  "parcelasTotal": null,
+  "parcelasRestantes": null,
+  "ativo": true
+}
+
+### Deletar gasto fixo
+DELETE {{baseUrl}}/api/gastofixocartao/1
+
+### ==================== FATURA ====================
+
+### Listar faturas
+GET {{baseUrl}}/api/fatura
+
+### Buscar fatura por cartão e mês
+GET {{baseUrl}}/api/fatura/cartao/1/2026-04-01
+
+### Criar fatura
+POST {{baseUrl}}/api/fatura
+Content-Type: application/json
+
+{
+  "cartaoId": 1,
+  "mesRef": "2026-04-01",
+  "valorTotal": 850.00,
+  "valorFixo": 200.00,
+  "valorSuperfluo": 650.00,
+  "paga": false
+}
+
+### Editar fatura
+PUT {{baseUrl}}/api/fatura/1
+Content-Type: application/json
+
+{
+  "id": 1,
+  "cartaoId": 1,
+  "mesRef": "2026-04-01",
+  "valorTotal": 850.00,
+  "valorFixo": 200.00,
+  "valorSuperfluo": 650.00,
+  "paga": true
+}
+
+### ==================== META ====================
+
+### Listar metas
+GET {{baseUrl}}/api/meta
+
+### Criar meta
+POST {{baseUrl}}/api/meta
+Content-Type: application/json
+
+{
+  "nome": "Reserva de emergência",
+  "tipo": "economia",
+  "pessoa": "Caca",
+  "valorAlvo": 30000.00,
+  "prazo": "2026-12-01",
+  "categoriaId": null,
+  "ativa": true
+}
+
+### Editar meta
+PUT {{baseUrl}}/api/meta/1
+Content-Type: application/json
+
+{
+  "id": 1,
+  "nome": "Reserva de emergência",
+  "tipo": "economia",
+  "pessoa": "Caca",
+  "valorAlvo": 35000.00,
+  "prazo": "2027-06-01",
+  "categoriaId": null,
+  "ativa": true
+}
+
+### Deletar meta
+DELETE {{baseUrl}}/api/meta/1
+
+### ==================== META PROGRESSO ====================
+
+### Listar progresso de uma meta
+GET {{baseUrl}}/api/metaprogresso/meta/1
+
+### Registrar progresso
+POST {{baseUrl}}/api/metaprogresso
+Content-Type: application/json
+
+{
+  "metaId": 1,
+  "mesRef": "2026-04-01",
+  "valorGuardadoMes": 1500.00,
+  "valorAcumulado": 4500.00,
+  "percentualAtingido": 15.0,
+  "snapshotSaldo": 4500.00
+}
+
+### ==================== PROJECAO ====================
+
+### Listar projeções por pessoa
+GET {{baseUrl}}/api/projecao/Caca
+
+### Criar projeção
+POST {{baseUrl}}/api/projecao
+Content-Type: application/json
+
+{
+  "pessoa": "Caca",
+  "mediaGuardadaMes": 1500.00,
+  "projecao12m": 18000.00,
+  "projecao60m": 90000.00,
+  "simulacaoValorAlvo": 30000.00,
+  "mesesNecessarios": 20
+}
