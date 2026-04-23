@@ -111,8 +111,26 @@ Content-Type: application/json
 ### Listar transações
 GET {{baseUrl}}/api/transacao
 
+### Corrigir mesRef da transação id=5 (março com mesRef errado)
+PUT {{baseUrl}}/api/transacao/5
+Content-Type: application/json
+
+{
+  "id": 5,
+  "data": "2026-03-22",
+  "mesRef": "2026-03-01",
+  "pessoa": "Caca",
+  "categoriaId": 5,
+  "valor": 300,
+  "tipo": "D",
+  "descricao": "",
+  "isEstimativa": false,
+  "confirmado": true,
+  "pago": true
+}
+
 ### Listar transações por pessoa e mês
-GET {{baseUrl}}/api/transacao/Caca/2026-04-01
+GET {{baseUrl}}/api/transacao/Caca/2026-04
 
 ### Criar transação
 POST {{baseUrl}}/api/transacao
