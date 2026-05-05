@@ -1,7 +1,4 @@
 import { useEffect, useState, useMemo } from 'react'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts'
 import { transacaoService } from '../../services/api'
 import type { Transacao } from '../../types'
 
@@ -12,11 +9,6 @@ const MESES = [
 
 function formatar(valor: number) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-function formatarEixo(valor: number) {
-  if (Math.abs(valor) >= 1000) return `R$${(valor / 1000).toFixed(1)}k`
-  return `R$${valor}`
 }
 
 function nomeMes(chave: string) {
@@ -67,7 +59,10 @@ function TabelaTransacoes({ lista, mostrarPessoa = false }: { lista: Transacao[]
                 {t.tipo === 'R' ? '+' : '-'}{formatar(t.valor)}
               </td>
               <td className="px-3 py-1.5 text-center">
-                <span className={`inline-block w-2 h-2 rounded-full ${t.pago ? 'bg-emerald-400' : 'bg-gray-600'}`} />
+                {t.pago
+                  ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">✓ pago</span>
+                  : <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">pendente</span>
+                }
               </td>
             </tr>
           )
@@ -82,24 +77,12 @@ export default function Historico() {
   const [loading, setLoading] = useState(true)
   const [mesSelecionado, setMesSelecionado] = useState<string>('')
 
-  // Filtros do gráfico
-  const [mostrarEntradas, setMostrarEntradas] = useState(true)
-  const [mostrarSaidas, setMostrarSaidas] = useState(true)
-  const [mostrarSaldo, setMostrarSaldo] = useState(true)
-  const [mesesAtivos, setMesesAtivos] = useState<Set<string>>(new Set())
-
   useEffect(() => {
     transacaoService.listar()
-      .then(data => {
-        setTransacoes(data)
-        // Ativa todos os meses por padrão
-        const chaves = new Set(data.map((t: Transacao) => t.data.slice(0, 7)))
-        setMesesAtivos(chaves)
-      })
+      .then(setTransacoes)
       .finally(() => setLoading(false))
   }, [])
 
-  // Dados agrupados por mês
   const dadosPorMes = useMemo(() => {
     const mapa: Record<string, { entradas: number; saidas: number }> = {}
     for (const t of transacoes) {
@@ -111,31 +94,14 @@ export default function Historico() {
     return mapa
   }, [transacoes])
 
-  const todosMeses = useMemo(() =>
-    Object.keys(dadosPorMes).sort(),
-    [dadosPorMes]
-  )
+  const todosMeses = useMemo(() => Object.keys(dadosPorMes).sort(), [dadosPorMes])
 
-  const dadosGrafico = useMemo(() =>
-    todosMeses
-      .filter(m => mesesAtivos.has(m))
-      .map(chave => ({
-        mes: nomeMes(chave),
-        Entradas: dadosPorMes[chave].entradas,
-        Saídas: dadosPorMes[chave].saidas,
-        Saldo: dadosPorMes[chave].entradas - dadosPorMes[chave].saidas,
-      })),
-    [todosMeses, mesesAtivos, dadosPorMes]
-  )
-
-  // Resumo geral de todos os meses
   const resumoGeral = useMemo(() => {
     const entradas = transacoes.filter(t => t.tipo === 'R').reduce((acc, t) => acc + t.valor, 0)
     const saidas = transacoes.filter(t => t.tipo === 'D').reduce((acc, t) => acc + t.valor, 0)
     return { entradas, saidas, saldo: entradas - saidas }
   }, [transacoes])
 
-  // Transações do mês selecionado
   const transacoesMes = useMemo(() =>
     mesSelecionado ? transacoes.filter(t => t.data.startsWith(mesSelecionado)) : [],
     [transacoes, mesSelecionado]
@@ -147,14 +113,6 @@ export default function Historico() {
     const entradas = lista.filter(t => t.tipo === 'R').reduce((acc, t) => acc + t.valor, 0)
     const saidas = lista.filter(t => t.tipo === 'D').reduce((acc, t) => acc + t.valor, 0)
     return { entradas, saidas, saldo: entradas - saidas }
-  }
-
-  function toggleMes(chave: string) {
-    setMesesAtivos(prev => {
-      const next = new Set(prev)
-      next.has(chave) ? next.delete(chave) : next.add(chave)
-      return next
-    })
   }
 
   if (loading) {
@@ -211,7 +169,6 @@ export default function Historico() {
           <p className="text-gray-500 text-sm">Nenhuma transação neste mês.</p>
         ) : (
           <div className="flex flex-col gap-4">
-            {/* CACA */}
             <div className="rounded-xl border border-emerald-700/40 bg-emerald-950/30 p-5">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
@@ -245,7 +202,6 @@ export default function Historico() {
               )}
             </div>
 
-            {/* JOÃO */}
             <div className="rounded-xl border border-violet-700/40 bg-violet-950/20 p-5">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-violet-400" />
@@ -279,75 +235,6 @@ export default function Historico() {
               )}
             </div>
           </div>
-        )}
-      </div>
-
-      {/* GRÁFICO */}
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-        <h3 className="font-semibold text-gray-300 mb-5">Comparativo mensal</h3>
-
-        {/* Filtros do gráfico */}
-        <div className="flex flex-wrap items-center gap-6 mb-6">
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Exibir</span>
-            {[
-              { label: 'Entradas', cor: 'emerald', ativo: mostrarEntradas, toggle: () => setMostrarEntradas(v => !v) },
-              { label: 'Saídas', cor: 'red', ativo: mostrarSaidas, toggle: () => setMostrarSaidas(v => !v) },
-              { label: 'Saldo', cor: 'indigo', ativo: mostrarSaldo, toggle: () => setMostrarSaldo(v => !v) },
-            ].map(({ label, cor, ativo, toggle }) => (
-              <button
-                key={label}
-                onClick={toggle}
-                className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-                  ativo
-                    ? cor === 'emerald' ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                    : cor === 'red' ? 'bg-red-500/20 border-red-500/40 text-red-300'
-                    : 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
-                    : 'bg-gray-800 border-gray-700 text-gray-500'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Meses</span>
-            {todosMeses.map(chave => (
-              <button
-                key={chave}
-                onClick={() => toggleMes(chave)}
-                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                  mesesAtivos.has(chave)
-                    ? 'bg-gray-700 border-gray-600 text-white'
-                    : 'bg-gray-800 border-gray-700 text-gray-500'
-                }`}
-              >
-                {nomeMes(chave)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {dadosGrafico.length === 0 ? (
-          <p className="text-gray-500 text-sm">Nenhum mês selecionado.</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={dadosGrafico} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-              <XAxis dataKey="mes" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={formatarEixo} tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: 8 }}
-                labelStyle={{ color: '#f9fafb', fontWeight: 600 }}
-                formatter={(value: number) => formatar(value)}
-              />
-              <Legend wrapperStyle={{ color: '#9ca3af', fontSize: 13 }} />
-              {mostrarEntradas && <Bar dataKey="Entradas" fill="#34d399" radius={[4, 4, 0, 0]} />}
-              {mostrarSaidas && <Bar dataKey="Saídas" fill="#f87171" radius={[4, 4, 0, 0]} />}
-              {mostrarSaldo && <Bar dataKey="Saldo" fill="#818cf8" radius={[4, 4, 0, 0]} />}
-            </BarChart>
-          </ResponsiveContainer>
         )}
       </div>
     </div>

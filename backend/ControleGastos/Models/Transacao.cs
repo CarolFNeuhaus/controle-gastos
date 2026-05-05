@@ -14,4 +14,9 @@ public class Transacao
     public bool IsEstimativa { get; set; } = false;
     public bool Confirmado { get; set; } = false;
     public bool Pago { get; set; } = false;
+    public int? DividaId { get; set; }
+    public Divida? Divida { get; set; }
+    public int? FaturaId { get; set; }
+    public Fatura? Fatura { get; set; }
+    public int? GastoFixoId { get; set; }
 }

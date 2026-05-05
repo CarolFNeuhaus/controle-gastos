@@ -20,15 +20,19 @@ export interface Cartao {
   cor?: string
 }
 
-export interface SalarioEstimativa {
+export interface Divida {
   id: number
+  descricao: string
   pessoa: string
-  mesRef: string
-  valorEstimado: number
-  valorReal?: number
-  confirmado: boolean
+  pessoaRelacionada: string
+  tipo: string // a_receber / a_pagar
+  valorTotal: number
+  valorPago: number
+  dataInicio: string
+  dataPrevista?: string
   observacao?: string
-  atualizadoEm: string
+  status: string // ativa / quitada
+  criadaEm: string
 }
 
 export interface Transacao {
@@ -44,6 +48,19 @@ export interface Transacao {
   isEstimativa: boolean
   confirmado: boolean
   pago: boolean
+  dividaId?: number
+  faturaId?: number
+}
+
+export interface GastoFixo {
+  id: number
+  descricao: string
+  valor: number
+  categoriaId: number
+  categoria?: Categoria
+  pessoa: string
+  diaVencimento?: number
+  ativo: boolean
 }
 
 export interface GastoFixoCartao {
@@ -68,37 +85,13 @@ export interface Fatura {
   paga: boolean
 }
 
-export interface Meta {
+export interface FaturaItem {
   id: number
-  nome: string
-  tipo: string
-  pessoa: string
-  valorAlvo: number
-  prazo: string
-  categoriaId?: number
-  categoria?: Categoria
-  ativa: boolean
+  faturaId: number
+  data: string
+  descricao: string
+  valor: number
+  parcela?: string
+  valorTotalCompra?: number
 }
 
-export interface MetaProgresso {
-  id: number
-  metaId: number
-  meta?: Meta
-  mesRef: string
-  valorGuardadoMes: number
-  valorAcumulado: number
-  percentualAtingido: number
-  calculadoEm: string
-  snapshotSaldo: number
-}
-
-export interface Projecao {
-  id: number
-  calculadoEm: string
-  pessoa: string
-  mediaGuardadaMes: number
-  projecao12m: number
-  projecao60m: number
-  simulacaoValorAlvo?: number
-  mesesNecessarios?: number
-}

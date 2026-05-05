@@ -21,20 +21,18 @@ public class FaturaController : ControllerBase
     {
         return await _context.Faturas
             .Include(f => f.Cartao)
+            .OrderByDescending(f => f.MesRef)
             .ToListAsync();
     }
 
-    [HttpGet("cartao/{cartaoId}/{mesRef}")]
-    public async Task<ActionResult<Fatura>> BuscarPorMes(int cartaoId, DateOnly mesRef)
+    [HttpGet("cartao/{cartaoId}")]
+    public async Task<ActionResult<IEnumerable<Fatura>>> ListarPorCartao(int cartaoId)
     {
-        var fatura = await _context.Faturas
+        return await _context.Faturas
             .Include(f => f.Cartao)
-            .FirstOrDefaultAsync(f => f.CartaoId == cartaoId && f.MesRef == mesRef);
-
-        if (fatura == null)
-            return NotFound();
-
-        return fatura;
+            .Where(f => f.CartaoId == cartaoId)
+            .OrderByDescending(f => f.MesRef)
+            .ToListAsync();
     }
 
     [HttpPost]
@@ -52,6 +50,28 @@ public class FaturaController : ControllerBase
             return BadRequest();
 
         _context.Entry(fatura).State = EntityState.Modified;
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPatch("{id}/paga")]
+    public async Task<IActionResult> MarcarPaga(int id)
+    {
+        var fatura = await _context.Faturas.FindAsync(id);
+        if (fatura == null) return NotFound();
+
+        fatura.Paga = !fatura.Paga;
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Deletar(int id)
+    {
+        var fatura = await _context.Faturas.FindAsync(id);
+        if (fatura == null) return NotFound();
+
+        _context.Faturas.Remove(fatura);
         await _context.SaveChangesAsync();
         return NoContent();
     }

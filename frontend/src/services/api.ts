@@ -1,4 +1,4 @@
-import type { Categoria, Transacao, SalarioEstimativa, Cartao, Meta } from '../types'
+import type { Categoria, Transacao, Cartao, Divida, GastoFixo, GastoFixoCartao, Fatura, FaturaItem } from '../types'
 
 const BASE_URL = 'http://localhost:5211/api'
 
@@ -47,15 +47,6 @@ export const transacaoService = {
     request<void>(`/transacao/${id}`, { method: 'DELETE' }),
 }
 
-export const salarioService = {
-  listar: () => request<SalarioEstimativa[]>('/salarioestimativa'),
-  buscarPorMes: (pessoa: string, mesRef: string) =>
-    request<SalarioEstimativa>(`/salarioestimativa/${pessoa}/${mesRef}`),
-  criar: (data: Omit<SalarioEstimativa, 'id' | 'atualizadoEm'>) =>
-    request<SalarioEstimativa>('/salarioestimativa', { method: 'POST', body: JSON.stringify(data) }),
-  editar: (id: number, data: SalarioEstimativa) =>
-    request<void>(`/salarioestimativa/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-}
 
 export const cartaoService = {
   listar: () => request<Cartao[]>('/cartao'),
@@ -67,12 +58,65 @@ export const cartaoService = {
     request<void>(`/cartao/${id}`, { method: 'DELETE' }),
 }
 
-export const metaService = {
-  listar: () => request<Meta[]>('/meta'),
-  criar: (data: Omit<Meta, 'id' | 'categoria'>) =>
-    request<Meta>('/meta', { method: 'POST', body: JSON.stringify(data) }),
-  editar: (id: number, data: Meta) =>
-    request<void>(`/meta/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deletar: (id: number) =>
-    request<void>(`/meta/${id}`, { method: 'DELETE' }),
+export const gastoFixoService = {
+  listar: () => request<GastoFixo[]>('/gastofixo'),
+  criar: (data: Omit<GastoFixo, 'id' | 'categoria'>) =>
+    request<GastoFixo>('/gastofixo', { method: 'POST', body: JSON.stringify(data) }),
+  editar: (id: number, data: GastoFixo) =>
+    request<void>(`/gastofixo/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletar: (id: number) => request<void>(`/gastofixo/${id}`, { method: 'DELETE' }),
+  gerarParaMes: (mesRef: string) =>
+    request<{ gerados: number; atualizados: number; total: number }>(`/gastofixo/gerar/${mesRef}`, { method: 'POST' }),
 }
+
+export const gastoFixoCartaoService = {
+  listar: () => request<GastoFixoCartao[]>('/gastofixocartao'),
+  listarPorCartao: (cartaoId: number) => request<GastoFixoCartao[]>(`/gastofixocartao/cartao/${cartaoId}`),
+  criar: (data: Omit<GastoFixoCartao, 'id' | 'cartao'>) =>
+    request<GastoFixoCartao>('/gastofixocartao', { method: 'POST', body: JSON.stringify(data) }),
+  editar: (id: number, data: GastoFixoCartao) =>
+    request<void>(`/gastofixocartao/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletar: (id: number) =>
+    request<void>(`/gastofixocartao/${id}`, { method: 'DELETE' }),
+}
+
+export const faturaItemService = {
+  listarPorFatura: (faturaId: number) => request<FaturaItem[]>(`/faturaitem/fatura/${faturaId}`),
+  criarBulk: (faturaId: number, itens: Omit<FaturaItem, 'id' | 'faturaId'>[]) =>
+    request<void>(`/faturaitem/fatura/${faturaId}/bulk`, { method: 'POST', body: JSON.stringify(itens) }),
+  deletar: (id: number) => request<void>(`/faturaitem/${id}`, { method: 'DELETE' }),
+  deletarPorFatura: (faturaId: number) => request<void>(`/faturaitem/fatura/${faturaId}`, { method: 'DELETE' }),
+}
+
+export const faturaService = {
+  listar: () => request<Fatura[]>('/fatura'),
+  listarPorCartao: (cartaoId: number) => request<Fatura[]>(`/fatura/cartao/${cartaoId}`),
+  criar: (data: Omit<Fatura, 'id' | 'cartao'>) =>
+    request<Fatura>('/fatura', { method: 'POST', body: JSON.stringify(data) }),
+  editar: (id: number, data: Fatura) =>
+    request<void>(`/fatura/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  marcarPaga: (id: number) =>
+    request<void>(`/fatura/${id}/paga`, { method: 'PATCH' }),
+  deletar: (id: number) =>
+    request<void>(`/fatura/${id}`, { method: 'DELETE' }),
+}
+
+export const dividaService = {
+  listar: () => request<Divida[]>('/divida'),
+  listarAtivas: () => request<Divida[]>('/divida/ativas'),
+  listarHistorico: () => request<Divida[]>('/divida/historico'),
+  buscar: (id: number) => request<Divida>(`/divida/${id}`),
+  criar: (data: Omit<Divida, 'id' | 'valorPago' | 'status' | 'criadaEm'>) =>
+    request<Divida>('/divida', { method: 'POST', body: JSON.stringify(data) }),
+  editar: (id: number, data: Divida) =>
+    request<void>(`/divida/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletar: (id: number) =>
+    request<void>(`/divida/${id}`, { method: 'DELETE' }),
+  registrarPagamento: (id: number, pagamento: { valor: number; data: string; categoriaId: number; descricao?: string }) =>
+    request<Transacao>(`/divida/${id}/pagamento`, { method: 'POST', body: JSON.stringify(pagamento) }),
+  listarPagamentos: (id: number) =>
+    request<Transacao[]>(`/divida/${id}/pagamentos`),
+  editarPagamento: (dividaId: number, transacaoId: number, dados: { valor: number; data: string; descricao?: string }) =>
+    request<void>(`/divida/${dividaId}/pagamento/${transacaoId}`, { method: 'PUT', body: JSON.stringify(dados) }),
+}
+

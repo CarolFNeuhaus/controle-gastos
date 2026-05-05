@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { categoriaService, transacaoService } from '../services/api'
-import type { Categoria, Transacao } from '../types'
+import { categoriaService, transacaoService, dividaService, faturaService } from '../services/api'
+import type { Categoria, Transacao, Divida, Fatura } from '../types'
 
 interface PainelTransacaoProps {
   aberto: boolean
@@ -20,14 +20,20 @@ const FORM_VAZIO = {
   isEstimativa: false,
   confirmado: true,
   pago: false,
+  dividaId: '',
+  faturaId: '',
 }
 
 export default function PainelTransacao({ aberto, onFechar, onSalvar, transacao }: PainelTransacaoProps) {
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [dividasAbertas, setDividasAbertas] = useState<Divida[]>([])
+  const [faturas, setFaturas] = useState<Fatura[]>([])
   const [form, setForm] = useState(FORM_VAZIO)
 
   useEffect(() => {
     categoriaService.listar().then(setCategorias)
+    dividaService.listarAtivas().then(setDividasAbertas)
+    faturaService.listar().then(setFaturas)
   }, [])
 
   useEffect(() => {
@@ -43,6 +49,8 @@ export default function PainelTransacao({ aberto, onFechar, onSalvar, transacao 
         isEstimativa: transacao.isEstimativa,
         confirmado: transacao.confirmado,
         pago: transacao.pago,
+        dividaId: transacao.dividaId ? String(transacao.dividaId) : '',
+        faturaId: transacao.faturaId ? String(transacao.faturaId) : '',
       })
     } else {
       setForm(FORM_VAZIO)
@@ -55,6 +63,8 @@ export default function PainelTransacao({ aberto, onFechar, onSalvar, transacao 
       ...form,
       valor: parseFloat(form.valor),
       categoriaId: parseInt(form.categoriaId),
+      dividaId: form.dividaId ? parseInt(form.dividaId) : undefined,
+      faturaId: form.faturaId ? parseInt(form.faturaId) : undefined,
     }
     if (transacao) {
       await transacaoService.editar(transacao.id, { ...transacao, ...payload })
@@ -166,6 +176,65 @@ export default function PainelTransacao({ aberto, onFechar, onSalvar, transacao 
             />
             <label htmlFor="pago" className="text-sm text-gray-300">Já pago</label>
           </div>
+
+          {dividasAbertas.filter(d => d.pessoa === form.pessoa).length > 0 && (
+            <div>
+              <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Vincular a dívida (opcional)</label>
+              <select
+                value={form.dividaId}
+                onChange={e => setForm(f => ({ ...f, dividaId: e.target.value }))}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500"
+              >
+                <option value="">Nenhuma</option>
+                {dividasAbertas
+                  .filter(d => d.pessoa === form.pessoa)
+                  .map(d => (
+                    <option key={d.id} value={d.id}>{d.descricao} — {d.pessoaRelacionada}</option>
+                  ))}
+              </select>
+            </div>
+          )}
+
+          {form.tipo === 'D' && faturas.length > 0 && (
+            <div>
+              <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Pagamento de fatura de cartão (opcional)</label>
+              <select
+                value={form.faturaId}
+                onChange={e => {
+                  const faturaId = e.target.value
+                  if (faturaId) {
+                    const fatura = faturas.find(f => f.id === parseInt(faturaId))
+                    if (fatura) {
+                      const mes = new Date(fatura.mesRef).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+                      const nomeCartao = fatura.cartao?.nome ?? `Cartão ${fatura.cartaoId}`
+                      setForm(f => ({
+                        ...f,
+                        faturaId,
+                        valor: String(fatura.valorTotal),
+                        descricao: `Fatura ${nomeCartao} - ${mes}`,
+                      }))
+                    } else {
+                      setForm(f => ({ ...f, faturaId }))
+                    }
+                  } else {
+                    setForm(f => ({ ...f, faturaId: '' }))
+                  }
+                }}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500"
+              >
+                <option value="">Nenhuma</option>
+                {faturas.map(f => {
+                  const mes = new Date(f.mesRef).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+                  const status = f.paga ? ' ✓' : ''
+                  return (
+                    <option key={f.id} value={f.id}>
+                      {f.cartao?.nome ?? `Cartão ${f.cartaoId}`} — {mes}{status}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-800 bg-gray-900">

@@ -1,10 +1,13 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+
 namespace ControleGastos.Models;
 
 public class Fatura
 {
     public int Id { get; set; }
     public int CartaoId { get; set; }
-    public Cartao Cartao { get; set; } = null!;
+    [BindNever]
+    public Cartao? Cartao { get; set; }
     public DateOnly MesRef { get; set; }
     public decimal ValorTotal { get; set; }
     public decimal ValorFixo { get; set; }

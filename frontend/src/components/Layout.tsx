@@ -27,6 +27,30 @@ export default function Layout({ children }: LayoutProps) {
             Início
           </NavLink>
           <NavLink
+            to="/cartoes"
+            className={({ isActive }) =>
+              `px-4 py-3 rounded-lg text-sm transition-colors ${
+                isActive
+                  ? 'bg-emerald-500/10 text-emerald-400 font-medium'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`
+            }
+          >
+            Cartões
+          </NavLink>
+          <NavLink
+            to="/dividas"
+            className={({ isActive }) =>
+              `px-4 py-3 rounded-lg text-sm transition-colors ${
+                isActive
+                  ? 'bg-emerald-500/10 text-emerald-400 font-medium'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`
+            }
+          >
+            Dívidas
+          </NavLink>
+          <NavLink
             to="/historico"
             className={({ isActive }) =>
               `px-4 py-3 rounded-lg text-sm transition-colors ${
@@ -37,30 +61,6 @@ export default function Layout({ children }: LayoutProps) {
             }
           >
             Histórico
-          </NavLink>
-          <NavLink
-            to="/metas"
-            className={({ isActive }) =>
-              `px-4 py-3 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? 'bg-emerald-500/10 text-emerald-400 font-medium'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`
-            }
-          >
-            Metas
-          </NavLink>
-          <NavLink
-            to="/estimativas"
-            className={({ isActive }) =>
-              `px-4 py-3 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? 'bg-emerald-500/10 text-emerald-400 font-medium'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`
-            }
-          >
-            Estimativas
           </NavLink>
           <NavLink
             to="/configuracoes"
