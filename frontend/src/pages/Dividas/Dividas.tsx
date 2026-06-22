@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { dividaService, categoriaService } from '../../services/api'
-import type { Divida, Categoria, Transacao } from '../../types'
+import { dividaService } from '../../services/api'
+import type { Divida, Transacao } from '../../types'
 
 function formatar(valor: number) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -28,15 +28,13 @@ const FORM_VAZIO = {
 
 interface ModalPagamentoProps {
   divida: Divida
-  categorias: Categoria[]
   onFechar: () => void
   onSalvo: () => void
 }
 
-function ModalPagamento({ divida, categorias, onFechar, onSalvo }: ModalPagamentoProps) {
+function ModalPagamento({ divida, onFechar, onSalvo }: ModalPagamentoProps) {
   const [valor, setValor] = useState('')
   const [data, setData] = useState(new Date().toISOString().slice(0, 10))
-  const [categoriaId, setCategoriaId] = useState('')
   const [descricao, setDescricao] = useState('')
   const [salvando, setSalvando] = useState(false)
 
@@ -45,13 +43,12 @@ function ModalPagamento({ divida, categorias, onFechar, onSalvo }: ModalPagament
     ['Caca', 'João'].includes(divida.pessoaRelacionada) && divida.pessoaRelacionada !== divida.pessoa
 
   async function salvar() {
-    if (!valor || !categoriaId) return
+    if (!valor) return
     setSalvando(true)
     try {
       await dividaService.registrarPagamento(divida.id, {
         valor: parseFloat(valor),
         data,
-        categoriaId: parseInt(categoriaId),
         descricao: descricao || undefined,
       })
       onSalvo()
@@ -92,16 +89,6 @@ function ModalPagamento({ divida, categorias, onFechar, onSalvo }: ModalPagament
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500" />
           </div>
           <div>
-            <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Categoria</label>
-            <select value={categoriaId} onChange={e => setCategoriaId(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500">
-              <option value="">Selecione...</option>
-              {categorias
-                .filter(c => c.ativa && (c.pessoa === divida.pessoa || c.pessoa === 'ambos'))
-                .map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
-          </div>
-          <div>
             <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Descrição (opcional)</label>
             <input type="text" placeholder={`Pagamento: ${divida.descricao}`} value={descricao}
               onChange={e => setDescricao(e.target.value)}
@@ -110,7 +97,7 @@ function ModalPagamento({ divida, categorias, onFechar, onSalvo }: ModalPagament
         </div>
 
         <div className="flex gap-3 mt-5">
-          <button onClick={salvar} disabled={salvando || !valor || !categoriaId}
+          <button onClick={salvar} disabled={salvando || !valor}
             className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg transition-colors">
             {salvando ? 'Salvando...' : 'Confirmar pagamento'}
           </button>
@@ -353,9 +340,6 @@ function CardDivida({ divida, onPagamento, onEditar, onDeletar, onAtualizar }: C
                       {p.descricao && (
                         <span className="text-xs text-gray-500 truncate max-w-48">{p.descricao}</span>
                       )}
-                      {p.categoria && (
-                        <span className="text-[10px] text-gray-600 px-1.5 py-0.5 rounded bg-gray-800">{p.categoria.nome}</span>
-                      )}
                     </div>
                     <button
                       onClick={() => setEditandoPagamento(p)}
@@ -530,7 +514,6 @@ function FormDivida({ form, setForm, salvando, editando, onSalvar, onCancelar }:
 export default function Dividas() {
   const [aba, setAba] = useState<'ativas' | 'historico'>('ativas')
   const [dividas, setDividas] = useState<Divida[]>([])
-  const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loading, setLoading] = useState(true)
   const [formularioAberto, setFormularioAberto] = useState(false)
   const [editando, setEditando] = useState<Divida | null>(null)
@@ -539,9 +522,8 @@ export default function Dividas() {
   const [form, setForm] = useState(FORM_VAZIO)
 
   async function carregar() {
-    const [d, c] = await Promise.all([dividaService.listar(), categoriaService.listar()])
+    const d = await dividaService.listar()
     setDividas(d)
-    setCategorias(c)
     setLoading(false)
   }
 
@@ -671,7 +653,6 @@ export default function Dividas() {
       {pagandoDivida && (
         <ModalPagamento
           divida={pagandoDivida}
-          categorias={categorias}
           onFechar={() => setPagandoDivida(null)}
           onSalvo={async () => {
             setPagandoDivida(null)

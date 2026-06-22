@@ -25,6 +25,45 @@ public class FaturaItemController : ControllerBase
             .ToListAsync();
     }
 
+    [HttpGet("cartao/{cartaoId}/parcelas")]
+    public async Task<ActionResult<IEnumerable<object>>> ListarParcelasPorCartao(int cartaoId)
+    {
+        return await _context.FaturaItens
+            .Where(i => i.Parcela != null && i.Fatura!.CartaoId == cartaoId)
+            .Include(i => i.Fatura)
+            .OrderBy(i => i.Fatura!.MesRef)
+            .Select(i => new
+            {
+                i.Id,
+                i.FaturaId,
+                MesRef = i.Fatura!.MesRef.ToString("yyyy-MM-dd"),
+                i.Descricao,
+                i.Valor,
+                i.Parcela,
+            })
+            .ToListAsync();
+    }
+
+    [HttpGet("parcelas")]
+    public async Task<ActionResult<IEnumerable<object>>> ListarTodasParcelas()
+    {
+        return await _context.FaturaItens
+            .Where(i => i.Parcela != null)
+            .Include(i => i.Fatura)
+            .OrderBy(i => i.Fatura!.MesRef)
+            .Select(i => new
+            {
+                i.Id,
+                i.FaturaId,
+                CartaoId = i.Fatura!.CartaoId,
+                MesRef = i.Fatura!.MesRef.ToString("yyyy-MM-dd"),
+                i.Descricao,
+                i.Valor,
+                i.Parcela,
+            })
+            .ToListAsync();
+    }
+
     [HttpPost("fatura/{faturaId}/bulk")]
     public async Task<IActionResult> CriarBulk(int faturaId, List<FaturaItem> itens)
     {

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import { cartaoService, gastoFixoCartaoService, faturaService } from '../../services/api'
-import type { Cartao, GastoFixoCartao, Fatura } from '../../types'
+import { useEffect, useRef, useState } from 'react'
+import { cartaoService, gastoFixoCartaoService, faturaService, faturaItemService } from '../../services/api'
+import type { Cartao, GastoFixoCartao, Fatura, FaturaItem, ParcelaCartao } from '../../types'
+import { getParser } from '../../utils/csvParsers'
 
 const BANDEIRAS = ['Visa', 'Mastercard', 'Elo', 'American Express', 'Hipercard', 'Outro']
 const CORES = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b']
@@ -325,59 +326,93 @@ function SecaoGastosFixos({ cartao }: { cartao: Cartao }) {
   )
 }
 
-// ── Seção Faturas ─────────────────────────────────────────────────────────────
+// ── Cálculo de previsão ───────────────────────────────────────────────────────
 
-const FORM_FATURA_VAZIO = {
-  valorTotal: '',
-  valorFixo: '',
-  valorSuperfluo: '',
+interface ItemPrevisao {
+  descricao: string
+  valor: number
+  tipo: 'fixo' | 'parcela'
+  parcela?: string
 }
+
+function calcularPrevisao(
+  mesAlvo: string,
+  gastosFixos: GastoFixoCartao[],
+  parcelas: ParcelaCartao[],
+): ItemPrevisao[] {
+  const resultado: ItemPrevisao[] = []
+  const [anoAlvo, mesAlvoNum] = mesAlvo.slice(0, 7).split('-').map(Number)
+
+  // Gastos fixos ativos
+  for (const g of gastosFixos) {
+    if (!g.ativo) continue
+    resultado.push({ descricao: g.descricao, valor: g.valor, tipo: 'fixo' })
+  }
+
+  // Parcelas pendentes de meses anteriores
+  for (const p of parcelas) {
+    const match = p.parcela.match(/^(\d+)\/(\d+)$/)
+    if (!match) continue
+    const atual = parseInt(match[1])
+    const total = parseInt(match[2])
+    const restantes = total - atual
+    if (restantes <= 0) continue
+
+    const [anoRef, mesRef] = p.mesRef.slice(0, 7).split('-').map(Number)
+    // meses de diferença entre o mês alvo e o mês da fatura onde essa parcela foi cobrada
+    const diffMeses = (anoAlvo - anoRef) * 12 + (mesAlvoNum - mesRef)
+
+    // a parcela cai no mês alvo se diffMeses está entre 1 e restantes (inclusive)
+    if (diffMeses >= 1 && diffMeses <= restantes) {
+      const parcelaFutura = `${atual + diffMeses}/${total}`
+      resultado.push({ descricao: p.descricao, valor: p.valor, tipo: 'parcela', parcela: parcelaFutura })
+    }
+  }
+
+  return resultado
+}
+
+// ── Seção Faturas ─────────────────────────────────────────────────────────────
 
 function SecaoFaturas({ cartao }: { cartao: Cartao }) {
   const [faturas, setFaturas] = useState<Fatura[]>([])
   const [mesNav, setMesNav] = useState(mesAtual())
-  const [formAberto, setFormAberto] = useState(false)
-  const [form, setForm] = useState(FORM_FATURA_VAZIO)
+  const [itens, setItens] = useState<FaturaItem[]>([])
+  const [gastosFixos, setGastosFixos] = useState<GastoFixoCartao[]>([])
+  const [parcelas, setParcelas] = useState<ParcelaCartao[]>([])
+  const [importando, setImportando] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   async function carregar() {
-    const data = await faturaService.listarPorCartao(cartao.id)
-    setFaturas(data)
+    const [faturaData, gastosData, parcelasData] = await Promise.all([
+      faturaService.listarPorCartao(cartao.id),
+      gastoFixoCartaoService.listarPorCartao(cartao.id),
+      faturaItemService.listarParcelasPorCartao(cartao.id),
+    ])
+    setFaturas(faturaData)
+    setGastosFixos(gastosData)
+    setParcelas(parcelasData)
+  }
+
+  async function carregarItens(faturaId: number) {
+    const data = await faturaItemService.listarPorFatura(faturaId)
+    setItens(data)
   }
 
   useEffect(() => { carregar() }, [cartao.id])
 
   const faturaDoMes = faturas.find(f => f.mesRef.slice(0, 7) === mesNav.slice(0, 7))
 
-  function abrirForm(fatura?: Fatura) {
-    if (fatura) {
-      setForm({
-        valorTotal: String(fatura.valorTotal),
-        valorFixo: String(fatura.valorFixo),
-        valorSuperfluo: String(fatura.valorSuperfluo),
-      })
-    } else {
-      setForm(FORM_FATURA_VAZIO)
-    }
-    setFormAberto(true)
-  }
-
-  async function salvarFatura() {
-    const payload = {
-      cartaoId: cartao.id,
-      mesRef: mesNav,
-      valorTotal: parseFloat(form.valorTotal) || 0,
-      valorFixo: parseFloat(form.valorFixo) || 0,
-      valorSuperfluo: parseFloat(form.valorSuperfluo) || 0,
-      paga: faturaDoMes?.paga ?? false,
-    }
+  useEffect(() => {
     if (faturaDoMes) {
-      await faturaService.editar(faturaDoMes.id, { ...faturaDoMes, ...payload })
+      carregarItens(faturaDoMes.id)
     } else {
-      await faturaService.criar(payload)
+      setItens([])
     }
-    setFormAberto(false)
-    await carregar()
-  }
+  }, [faturaDoMes?.id])
+
+  const previsao = !faturaDoMes ? calcularPrevisao(mesNav, gastosFixos, parcelas) : []
+  const totalPrevisao = previsao.reduce((acc, i) => acc + i.valor, 0)
 
   async function togglePaga() {
     if (!faturaDoMes) return
@@ -389,8 +424,62 @@ function SecaoFaturas({ cartao }: { cartao: Cartao }) {
     if (!faturaDoMes) return
     if (!confirm('Excluir esta fatura?')) return
     await faturaService.deletar(faturaDoMes.id)
-    setFormAberto(false)
+    setItens([])
     await carregar()
+  }
+
+  async function importarCSV(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportando(true)
+    try {
+      const texto = await file.text()
+      const parser = getParser(cartao.nome)
+      const parsed = parser(texto)
+      if (parsed.length === 0) {
+        alert('Nenhum item encontrado no CSV. Verifique o formato do arquivo.')
+        return
+      }
+
+      const valorTotal = Math.round(parsed.reduce((acc, i) => acc + i.valor, 0) * 100) / 100
+
+      let faturaId: number
+      if (faturaDoMes) {
+        // Substitui itens e atualiza o total
+        await faturaItemService.deletarPorFatura(faturaDoMes.id)
+        await faturaService.editar(faturaDoMes.id, { ...faturaDoMes, valorTotal })
+        faturaId = faturaDoMes.id
+      } else {
+        // Cria a fatura com o total calculado
+        const nova = await faturaService.criar({
+          cartaoId: cartao.id,
+          mesRef: mesNav,
+          valorTotal,
+          valorFixo: 0,
+          valorSuperfluo: 0,
+          paga: false,
+        })
+        faturaId = nova.id
+      }
+
+      await faturaItemService.criarBulk(faturaId, parsed)
+      await carregar()
+      await carregarItens(faturaId)
+    } finally {
+      setImportando(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  async function deletarItem(id: number) {
+    await faturaItemService.deletar(id)
+    const novosItens = itens.filter(i => i.id !== id)
+    setItens(novosItens)
+    if (faturaDoMes) {
+      const novoTotal = Math.round(novosItens.reduce((acc, i) => acc + i.valor, 0) * 100) / 100
+      await faturaService.editar(faturaDoMes.id, { ...faturaDoMes, valorTotal: novoTotal })
+      await carregar()
+    }
   }
 
   return (
@@ -412,105 +501,119 @@ function SecaoFaturas({ cartao }: { cartao: Cartao }) {
         </button>
       </div>
 
-      {faturaDoMes && !formAberto ? (
-        /* Exibição da fatura existente */
+      <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={importarCSV} />
+
+      {faturaDoMes ? (
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-gray-800/60 rounded-xl p-4 border border-gray-700">
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total</p>
-              <p className="text-lg font-bold text-white">{formatar(faturaDoMes.valorTotal)}</p>
+          {/* Total calculado dos itens */}
+          <div className="bg-gray-800/60 rounded-xl p-4 border border-gray-700 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total da fatura</p>
+              <p className="text-2xl font-bold text-white">{formatar(faturaDoMes.valorTotal)}</p>
             </div>
-            <div className="bg-gray-800/60 rounded-xl p-4 border border-gray-700">
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fixo</p>
-              <p className="text-lg font-bold text-blue-400">{formatar(faturaDoMes.valorFixo)}</p>
-            </div>
-            <div className="bg-gray-800/60 rounded-xl p-4 border border-gray-700">
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Variável</p>
-              <p className="text-lg font-bold text-orange-400">{formatar(faturaDoMes.valorSuperfluo)}</p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={togglePaga}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  faturaDoMes.paga
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-gray-700 text-gray-400 border border-gray-600 hover:border-emerald-500/50'
+                }`}
+              >
+                {faturaDoMes.paga ? '✓ Paga' : 'Marcar paga'}
+              </button>
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={importando}
+                className="px-4 py-2 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors disabled:opacity-50"
+              >
+                {importando ? 'Importando...' : 'Reimportar CSV'}
+              </button>
+              <button
+                onClick={deletarFatura}
+                className="p-2 rounded-lg text-gray-600 hover:text-red-400 bg-gray-700 hover:bg-gray-600 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+                </svg>
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={togglePaga}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                faturaDoMes.paga
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-emerald-500/50'
-              }`}
-            >
-              {faturaDoMes.paga ? '✓ Fatura paga' : 'Marcar como paga'}
-            </button>
-            <button
-              onClick={() => abrirForm(faturaDoMes)}
-              className="px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 transition-colors"
-            >
-              Editar
-            </button>
-            <button
-              onClick={deletarFatura}
-              className="px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:text-red-400 bg-gray-800 hover:bg-gray-700 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      ) : formAberto ? (
-        /* Formulário de criação/edição */
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Total</label>
-              <input
-                type="number"
-                placeholder="0,00"
-                value={form.valorTotal}
-                onChange={e => setForm(f => ({ ...f, valorTotal: e.target.value }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Fixo</label>
-              <input
-                type="number"
-                placeholder="0,00"
-                value={form.valorFixo}
-                onChange={e => setForm(f => ({ ...f, valorFixo: e.target.value }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Variável</label>
-              <input
-                type="number"
-                placeholder="0,00"
-                value={form.valorSuperfluo}
-                onChange={e => setForm(f => ({ ...f, valorSuperfluo: e.target.value }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={() => setFormAberto(false)} className="flex-1 py-2.5 rounded-lg bg-gray-800 text-gray-300 text-sm hover:bg-gray-700 transition-colors">
-              Cancelar
-            </button>
-            <button onClick={salvarFatura} className="flex-1 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium transition-colors">
-              Salvar fatura
-            </button>
+          {/* Lista de itens */}
+          <div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
+              Itens {itens.length > 0 && `· ${itens.length}`}
+            </p>
+            {itens.length > 0 ? (
+              <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
+                {itens.map(item => (
+                  <div key={item.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-800/40 border border-gray-800 group">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white truncate">{item.descricao}</p>
+                      <div className="flex gap-2 text-xs text-gray-500 mt-0.5">
+                        <span>{new Date(item.data + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                        {item.parcela && <span className="text-gray-600">parcela {item.parcela}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-3">
+                      <span className="text-sm font-medium text-red-400 whitespace-nowrap">{formatar(item.valor)}</span>
+                      <button
+                        onClick={() => deletarItem(item.id)}
+                        className="text-gray-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-600">Nenhum item importado.</p>
+            )}
           </div>
         </div>
       ) : (
-        /* Nenhuma fatura no mês */
-        <div className="text-center py-8">
-          <p className="text-gray-600 text-sm mb-4">Nenhuma fatura registrada para este mês.</p>
-          <button
-            onClick={() => abrirForm()}
-            className="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2.5 rounded-lg transition-colors"
-          >
-            + Registrar fatura
-          </button>
+        /* Previsão — nenhuma fatura cadastrada para o mês */
+        <div className="flex flex-col gap-4">
+          <div className="bg-gray-800/40 rounded-xl p-4 border border-dashed border-gray-700 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Previsão</p>
+              <p className="text-2xl font-bold text-gray-300">{formatar(totalPrevisao)}</p>
+              {previsao.length === 0 && (
+                <p className="text-xs text-gray-600 mt-1">Nenhum gasto fixo ou parcela pendente.</p>
+              )}
+            </div>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={importando}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {importando ? 'Importando...' : 'Importar CSV'}
+            </button>
+          </div>
+
+          {previsao.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {previsao.map((item, i) => (
+                <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-800/30 border border-gray-800">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                      item.tipo === 'fixo'
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : 'bg-orange-500/20 text-orange-400'
+                    }`}>
+                      {item.tipo === 'fixo' ? 'fixo' : item.parcela}
+                    </span>
+                    <p className="text-sm text-gray-400 truncate">{item.descricao}</p>
+                  </div>
+                  <span className="text-sm font-medium text-gray-400 ml-3 whitespace-nowrap">{formatar(item.valor)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

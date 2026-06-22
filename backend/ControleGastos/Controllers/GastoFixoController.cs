@@ -20,7 +20,6 @@ public class GastoFixoController : ControllerBase
     public async Task<ActionResult<IEnumerable<GastoFixo>>> Listar()
     {
         return await _context.GastosFixos
-            .Include(g => g.Categoria)
             .OrderBy(g => g.Pessoa)
             .ThenBy(g => g.Descricao)
             .ToListAsync();
@@ -42,7 +41,6 @@ public class GastoFixoController : ControllerBase
 
         existente.Descricao = gastoFixo.Descricao;
         existente.Valor = gastoFixo.Valor;
-        existente.CategoriaId = gastoFixo.CategoriaId;
         existente.Pessoa = gastoFixo.Pessoa;
         existente.DiaVencimento = gastoFixo.DiaVencimento;
         existente.Ativo = gastoFixo.Ativo;
@@ -90,7 +88,6 @@ public class GastoFixoController : ControllerBase
             {
                 existente.Valor = gf.Valor;
                 existente.Descricao = gf.Descricao;
-                existente.CategoriaId = gf.CategoriaId;
                 existente.Data = dataVenc;
                 atualizados++;
             }
@@ -100,7 +97,6 @@ public class GastoFixoController : ControllerBase
                 {
                     Descricao = gf.Descricao,
                     Valor = gf.Valor,
-                    CategoriaId = gf.CategoriaId,
                     Pessoa = gf.Pessoa,
                     Data = dataVenc,
                     MesRef = mesRefDate,

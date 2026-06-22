@@ -86,7 +86,6 @@ public class DividaController : ControllerBase
             Data = req.Data,
             MesRef = mesRef,
             Pessoa = divida.Pessoa,
-            CategoriaId = req.CategoriaId,
             Valor = req.Valor,
             Tipo = tipoDono,
             Descricao = descricao,
@@ -106,7 +105,6 @@ public class DividaController : ControllerBase
                 Data = req.Data,
                 MesRef = mesRef,
                 Pessoa = divida.PessoaRelacionada,
-                CategoriaId = req.CategoriaId,
                 Valor = req.Valor,
                 Tipo = tipoRelacionada,
                 Descricao = descricao,
@@ -136,7 +134,6 @@ public class DividaController : ControllerBase
 
         // Retorna só as transações do dono da dívida para não duplicar pagamentos duplos
         return await _context.Transacoes
-            .Include(t => t.Categoria)
             .Where(t => t.DividaId == id && t.Pessoa == divida.Pessoa)
             .OrderByDescending(t => t.Data)
             .ToListAsync();
@@ -190,7 +187,6 @@ public class PagamentoRequest
 {
     public decimal Valor { get; set; }
     public DateOnly Data { get; set; }
-    public int CategoriaId { get; set; }
     public string? Descricao { get; set; }
 }
 

@@ -20,7 +20,6 @@ public class TransacaoController : ControllerBase
     public async Task<ActionResult<IEnumerable<Transacao>>> Listar()
     {
         return await _context.Transacoes
-            .Include(t => t.Categoria)
             .ToListAsync();
     }
 
@@ -28,7 +27,6 @@ public class TransacaoController : ControllerBase
     public async Task<ActionResult<IEnumerable<Transacao>>> ListarPorMes(string pessoa, DateOnly mesRef)
     {
         return await _context.Transacoes
-            .Include(t => t.Categoria)
             .Where(t => t.Pessoa == pessoa && t.MesRef == mesRef)
             .ToListAsync();
     }

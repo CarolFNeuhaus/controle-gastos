@@ -28,7 +28,6 @@ function TabelaTransacoes({ lista, mostrarPessoa = false }: { lista: Transacao[]
         <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-black/20">
           <th className="px-3 py-2 text-left font-medium">Data</th>
           {mostrarPessoa && <th className="px-3 py-2 text-left font-medium">Pessoa</th>}
-          <th className="px-3 py-2 text-left font-medium">Categoria</th>
           <th className="px-3 py-2 text-right font-medium">Valor</th>
           <th className="px-3 py-2 text-center font-medium">Pago</th>
         </tr>
@@ -36,12 +35,9 @@ function TabelaTransacoes({ lista, mostrarPessoa = false }: { lista: Transacao[]
       <tbody>
         {lista.map(t => {
           const isCaca = t.pessoa === 'Caca'
-          const isSalario = t.categoria?.isSalario === true
           return (
             <tr key={t.id} className={`border-b border-black/20 ${
-              isSalario
-                ? 'bg-yellow-500/15 hover:bg-yellow-500/25 shadow-[inset_3px_0_0_0_#eab308]'
-                : isCaca ? 'bg-emerald-900/40 hover:bg-emerald-900/60' : 'bg-violet-900/30 hover:bg-violet-900/50'
+              isCaca ? 'bg-emerald-900/40 hover:bg-emerald-900/60' : 'bg-violet-900/30 hover:bg-violet-900/50'
             }`}>
               <td className="px-3 py-1.5 text-xs text-gray-400 whitespace-nowrap">{formatarData(t.data)}</td>
               {mostrarPessoa && (
@@ -51,11 +47,7 @@ function TabelaTransacoes({ lista, mostrarPessoa = false }: { lista: Transacao[]
                   </span>
                 </td>
               )}
-              <td className={`px-3 py-1.5 text-sm font-semibold ${isSalario ? 'text-yellow-300' : isCaca ? 'text-emerald-300' : 'text-violet-300'}`}>
-                {t.categoria?.nome || '—'}
-                {isSalario && <span className="ml-2 text-[10px] bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded font-medium">salário</span>}
-              </td>
-              <td className={`px-3 py-1.5 text-sm font-bold text-right whitespace-nowrap ${isSalario ? 'text-yellow-300' : t.tipo === 'R' ? 'text-emerald-300' : 'text-red-400'}`}>
+              <td className={`px-3 py-1.5 text-sm font-bold text-right whitespace-nowrap ${t.tipo === 'R' ? 'text-emerald-300' : 'text-red-400'}`}>
                 {t.tipo === 'R' ? '+' : '-'}{formatar(t.valor)}
               </td>
               <td className="px-3 py-1.5 text-center">

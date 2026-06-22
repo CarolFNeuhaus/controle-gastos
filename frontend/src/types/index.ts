@@ -1,15 +1,3 @@
-export interface Categoria {
-  id: number
-  nome: string
-  descricao?: string
-  cor?: string
-  pessoa: string
-  isFixa: boolean
-  isSalario: boolean
-  ativa: boolean
-  criadaEm: string
-}
-
 export interface Cartao {
   id: number
   nome: string
@@ -40,8 +28,6 @@ export interface Transacao {
   data: string
   mesRef: string
   pessoa: string
-  categoriaId: number
-  categoria?: Categoria
   valor: number
   tipo: string
   descricao?: string
@@ -56,8 +42,6 @@ export interface GastoFixo {
   id: number
   descricao: string
   valor: number
-  categoriaId: number
-  categoria?: Categoria
   pessoa: string
   diaVencimento?: number
   ativo: boolean
@@ -93,5 +77,26 @@ export interface FaturaItem {
   valor: number
   parcela?: string
   valorTotalCompra?: number
+}
+
+export interface Salario {
+  id: number
+  pessoa: string
+  mesRef: string   // YYYY-MM-DD
+  valor: number
+  horas?: number
+  taxaHora?: number
+  isEstimativa: boolean
+  criadoEm: string
+}
+
+export interface ParcelaCartao {
+  id: number
+  faturaId: number
+  cartaoId?: number
+  mesRef: string   // YYYY-MM-DD da fatura onde essa parcela foi cobrada
+  descricao: string
+  valor: number
+  parcela: string  // ex: "2/3"
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { categoriaService, transacaoService, dividaService, faturaService } from '../services/api'
-import type { Categoria, Transacao, Divida, Fatura } from '../types'
+import { transacaoService, dividaService, faturaService } from '../services/api'
+import type { Transacao, Divida, Fatura } from '../types'
 
 interface PainelTransacaoProps {
   aberto: boolean
@@ -14,7 +14,6 @@ const FORM_VAZIO = {
   valor: '',
   tipo: 'D',
   pessoa: 'Caca',
-  categoriaId: '',
   data: new Date().toISOString().slice(0, 10),
   mesRef: new Date().toISOString().slice(0, 7) + '-01',
   isEstimativa: false,
@@ -25,13 +24,11 @@ const FORM_VAZIO = {
 }
 
 export default function PainelTransacao({ aberto, onFechar, onSalvar, transacao }: PainelTransacaoProps) {
-  const [categorias, setCategorias] = useState<Categoria[]>([])
   const [dividasAbertas, setDividasAbertas] = useState<Divida[]>([])
   const [faturas, setFaturas] = useState<Fatura[]>([])
   const [form, setForm] = useState(FORM_VAZIO)
 
   useEffect(() => {
-    categoriaService.listar().then(setCategorias)
     dividaService.listarAtivas().then(setDividasAbertas)
     faturaService.listar().then(setFaturas)
   }, [])
@@ -43,7 +40,6 @@ export default function PainelTransacao({ aberto, onFechar, onSalvar, transacao 
         valor: String(transacao.valor),
         tipo: transacao.tipo,
         pessoa: transacao.pessoa,
-        categoriaId: String(transacao.categoriaId),
         data: transacao.data,
         mesRef: transacao.mesRef,
         isEstimativa: transacao.isEstimativa,
@@ -58,11 +54,10 @@ export default function PainelTransacao({ aberto, onFechar, onSalvar, transacao 
   }, [transacao, aberto])
 
   async function salvar() {
-    if (!form.valor || !form.categoriaId) return
+    if (!form.valor) return
     const payload = {
       ...form,
       valor: parseFloat(form.valor),
-      categoriaId: parseInt(form.categoriaId),
       dividaId: form.dividaId ? parseInt(form.dividaId) : undefined,
       faturaId: form.faturaId ? parseInt(form.faturaId) : undefined,
     }
@@ -141,22 +136,6 @@ export default function PainelTransacao({ aberto, onFechar, onSalvar, transacao 
           </div>
 
           <div>
-            <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Categoria</label>
-            <select
-              value={form.categoriaId}
-              onChange={e => setForm(f => ({ ...f, categoriaId: e.target.value }))}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500"
-            >
-              <option value="">Selecione...</option>
-              {categorias
-                .filter(c => c.ativa && (c.pessoa === form.pessoa || c.pessoa === 'ambos'))
-                .map(c => (
-                  <option key={c.id} value={c.id}>{c.nome}</option>
-                ))}
-            </select>
-          </div>
-
-          <div>
             <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Data</label>
             <input
               type="date"
@@ -205,7 +184,8 @@ export default function PainelTransacao({ aberto, onFechar, onSalvar, transacao 
                   if (faturaId) {
                     const fatura = faturas.find(f => f.id === parseInt(faturaId))
                     if (fatura) {
-                      const mes = new Date(fatura.mesRef).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+                      const [a, m] = fatura.mesRef.split('-').map(Number)
+                  const mes = new Date(a, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
                       const nomeCartao = fatura.cartao?.nome ?? `Cartão ${fatura.cartaoId}`
                       setForm(f => ({
                         ...f,
@@ -224,7 +204,8 @@ export default function PainelTransacao({ aberto, onFechar, onSalvar, transacao 
               >
                 <option value="">Nenhuma</option>
                 {faturas.map(f => {
-                  const mes = new Date(f.mesRef).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+                  const [fa, fm] = f.mesRef.split('-').map(Number)
+                  const mes = new Date(fa, fm - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
                   const status = f.paga ? ' ✓' : ''
                   return (
                     <option key={f.id} value={f.id}>

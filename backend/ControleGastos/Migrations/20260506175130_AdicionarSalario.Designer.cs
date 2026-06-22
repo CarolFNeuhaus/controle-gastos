@@ -3,6 +3,7 @@ using System;
 using ControleGastos.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ControleGastos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260506175130_AdicionarSalario")]
+    partial class AdicionarSalario
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,6 +24,45 @@ namespace ControleGastos.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Categoria", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Ativa")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Cor")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CriadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Descricao")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsFixa")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSalario")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Pessoa")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Categorias");
+                });
 
             modelBuilder.Entity("ControleGastos.Models.Cartao", b =>
                 {
@@ -184,6 +226,9 @@ namespace ControleGastos.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("CategoriaId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Descricao")
                         .IsRequired()
                         .HasColumnType("text");
@@ -199,6 +244,8 @@ namespace ControleGastos.Migrations
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
 
                     b.ToTable("GastosFixos");
                 });
@@ -248,9 +295,6 @@ namespace ControleGastos.Migrations
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<decimal?>("Horas")
-                        .HasColumnType("numeric");
-
                     b.Property<bool>("IsEstimativa")
                         .HasColumnType("boolean");
 
@@ -260,9 +304,6 @@ namespace ControleGastos.Migrations
                     b.Property<string>("Pessoa")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<decimal?>("TaxaHora")
-                        .HasColumnType("numeric");
 
                     b.Property<decimal>("Valor")
                         .HasColumnType("numeric");
@@ -279,6 +320,9 @@ namespace ControleGastos.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoriaId")
+                        .HasColumnType("integer");
 
                     b.Property<bool>("Confirmado")
                         .HasColumnType("boolean");
@@ -320,6 +364,8 @@ namespace ControleGastos.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CategoriaId");
+
                     b.HasIndex("DividaId");
 
                     b.HasIndex("FaturaId");
@@ -349,6 +395,17 @@ namespace ControleGastos.Migrations
                     b.Navigation("Fatura");
                 });
 
+            modelBuilder.Entity("ControleGastos.Models.GastoFixo", b =>
+                {
+                    b.HasOne("Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
+                });
+
             modelBuilder.Entity("ControleGastos.Models.GastoFixoCartao", b =>
                 {
                     b.HasOne("ControleGastos.Models.Cartao", "Cartao")
@@ -362,6 +419,12 @@ namespace ControleGastos.Migrations
 
             modelBuilder.Entity("ControleGastos.Models.Transacao", b =>
                 {
+                    b.HasOne("Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("ControleGastos.Models.Divida", "Divida")
                         .WithMany()
                         .HasForeignKey("DividaId");
@@ -369,6 +432,8 @@ namespace ControleGastos.Migrations
                     b.HasOne("ControleGastos.Models.Fatura", "Fatura")
                         .WithMany()
                         .HasForeignKey("FaturaId");
+
+                    b.Navigation("Categoria");
 
                     b.Navigation("Divida");
 

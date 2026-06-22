@@ -1,4 +1,4 @@
-import type { Categoria, Transacao, Cartao, Divida, GastoFixo, GastoFixoCartao, Fatura, FaturaItem } from '../types'
+import type { Transacao, Cartao, Divida, GastoFixo, GastoFixoCartao, Fatura, FaturaItem, ParcelaCartao, Salario } from '../types'
 
 const BASE_URL = 'http://localhost:5211/api'
 
@@ -23,21 +23,11 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   return response.json()
 }
 
-export const categoriaService = {
-  listar: () => request<Categoria[]>('/categoria'),
-  criar: (data: Omit<Categoria, 'id' | 'criadaEm'>) =>
-    request<Categoria>('/categoria', { method: 'POST', body: JSON.stringify(data) }),
-  editar: (id: number, data: Categoria) =>
-    request<void>(`/categoria/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deletar: (id: number) =>
-    request<void>(`/categoria/${id}`, { method: 'DELETE' }),
-}
-
 export const transacaoService = {
   listar: () => request<Transacao[]>('/transacao'),
   listarPorMes: (pessoa: string, mesRef: string) =>
     request<Transacao[]>(`/transacao/${pessoa}/${mesRef}`),
-  criar: (data: Omit<Transacao, 'id' | 'categoria'>) =>
+  criar: (data: Omit<Transacao, 'id'>) =>
     request<Transacao>('/transacao', { method: 'POST', body: JSON.stringify(data) }),
   editar: (id: number, data: Transacao) =>
     request<void>(`/transacao/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -60,7 +50,7 @@ export const cartaoService = {
 
 export const gastoFixoService = {
   listar: () => request<GastoFixo[]>('/gastofixo'),
-  criar: (data: Omit<GastoFixo, 'id' | 'categoria'>) =>
+  criar: (data: Omit<GastoFixo, 'id'>) =>
     request<GastoFixo>('/gastofixo', { method: 'POST', body: JSON.stringify(data) }),
   editar: (id: number, data: GastoFixo) =>
     request<void>(`/gastofixo/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -82,6 +72,8 @@ export const gastoFixoCartaoService = {
 
 export const faturaItemService = {
   listarPorFatura: (faturaId: number) => request<FaturaItem[]>(`/faturaitem/fatura/${faturaId}`),
+  listarParcelasPorCartao: (cartaoId: number) => request<ParcelaCartao[]>(`/faturaitem/cartao/${cartaoId}/parcelas`),
+  listarTodasParcelas: () => request<ParcelaCartao[]>('/faturaitem/parcelas'),
   criarBulk: (faturaId: number, itens: Omit<FaturaItem, 'id' | 'faturaId'>[]) =>
     request<void>(`/faturaitem/fatura/${faturaId}/bulk`, { method: 'POST', body: JSON.stringify(itens) }),
   deletar: (id: number) => request<void>(`/faturaitem/${id}`, { method: 'DELETE' }),
@@ -101,6 +93,15 @@ export const faturaService = {
     request<void>(`/fatura/${id}`, { method: 'DELETE' }),
 }
 
+export const salarioService = {
+  listar: () => request<Salario[]>('/salario'),
+  criar: (data: Omit<Salario, 'id' | 'criadoEm'>) =>
+    request<Salario>('/salario', { method: 'POST', body: JSON.stringify(data) }),
+  editar: (id: number, data: Omit<Salario, 'id' | 'criadoEm' | 'pessoa'> & { pessoa: string }) =>
+    request<void>(`/salario/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletar: (id: number) => request<void>(`/salario/${id}`, { method: 'DELETE' }),
+}
+
 export const dividaService = {
   listar: () => request<Divida[]>('/divida'),
   listarAtivas: () => request<Divida[]>('/divida/ativas'),
@@ -112,7 +113,7 @@ export const dividaService = {
     request<void>(`/divida/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deletar: (id: number) =>
     request<void>(`/divida/${id}`, { method: 'DELETE' }),
-  registrarPagamento: (id: number, pagamento: { valor: number; data: string; categoriaId: number; descricao?: string }) =>
+  registrarPagamento: (id: number, pagamento: { valor: number; data: string; descricao?: string }) =>
     request<Transacao>(`/divida/${id}/pagamento`, { method: 'POST', body: JSON.stringify(pagamento) }),
   listarPagamentos: (id: number) =>
     request<Transacao[]>(`/divida/${id}/pagamentos`),

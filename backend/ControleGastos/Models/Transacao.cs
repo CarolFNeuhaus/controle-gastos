@@ -6,8 +6,6 @@ public class Transacao
     public DateOnly Data { get; set; }
     public DateOnly MesRef { get; set; }
     public string Pessoa { get; set; } = string.Empty;
-    public int CategoriaId { get; set; }
-    public Categoria? Categoria { get; set; }
     public decimal Valor { get; set; }
     public string Tipo { get; set; } = string.Empty;
     public string? Descricao { get; set; }
